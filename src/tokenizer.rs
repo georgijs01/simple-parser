@@ -21,8 +21,13 @@ impl Tokenizer {
         self.current += 1;
 
         // skip whitespace
-        while self.current < self.data.len() as isize && self.data[self.current] == ' ' {
+        while self.current < self.data.len() as isize && self.data[self.current as usize] == ' ' {
             self.current += 1;
+        }
+
+        // if the data ends with whitespace, return None
+        if self.current >= self.data.len() as isize {
+            return None
         }
 
         // first try to match any single character values
@@ -68,21 +73,27 @@ impl Tokenizer {
                 },
                 (State::Name, x @ _) => {
                     if !x.is_alphabetic() {
+                        self.current -= 1;
                         return Some(Var(read));
                     }
                 }
                 (State::Const, x @ _) => {
                     if !x.is_digit(10) {
+                        self.current -= 1;
                         return Some(Const(read.parse::<i64>().unwrap()))
                     }
                 }
                 _ => (),
             }
-            read.push(self.data[self.current]);
+            read.push(self.data[self.current as usize]);
             self.current += 1;
         }
 
-        return None;
+        match &mut state {
+            State::Undef => return None,
+            State::Name => return Some(Var(read)),
+            State::Const => Some(Const(read.parse::<i64>().unwrap())),
+        }
     }
 }
 
@@ -93,7 +104,7 @@ pub enum State {
 
 }
 
-
+#[derive(Debug)]
 pub enum Token {
 
     Var(String),
@@ -106,6 +117,7 @@ pub enum Token {
 
 }
 
+#[derive(Debug)]
 pub enum FuncType {
 
     Sine,
@@ -115,6 +127,7 @@ pub enum FuncType {
 
 }
 
+#[derive(Debug)]
 pub enum OpType {
 
     Add,
