@@ -1,6 +1,6 @@
 use crate::tokenizer::Token::{Var, Const, OpenBrace, CloseBrace, Assign, Func, Op};
 use crate::tokenizer::FuncType::{Sine, Cosine, Tangent, Exp};
-use crate::tokenizer::OpType::{Sub, Add, Mult, Div};
+use crate::tokenizer::OpType::{Sub, Add, Mult, Div, Pow};
 
 pub struct Tokenizer {
 
@@ -16,6 +16,12 @@ impl Tokenizer {
     }
 
     pub fn next(&mut self) -> Option<Token> {
+
+        enum State {
+            Undef,
+            Name,
+            Const,
+        }
 
         // skip whitespace
         while self.current < self.data.len() && self.data[self.current as usize] == ' ' {
@@ -33,6 +39,10 @@ impl Tokenizer {
             '(' => return Some(OpenBrace),
             ')' => return Some(CloseBrace),
             '=' => return Some(Assign),
+            '+' => return Some(Op(Add)),
+            '*' => return Some(Op(Mult)),
+            '/' => return Some(Op(Div)),
+            '^' => return Some(Op(Pow)),
             _ => self.current -= 1,
         }
 
@@ -43,23 +53,19 @@ impl Tokenizer {
         while self.current < self.data.len() {
             match (&mut state, self.data[self.current]) {
                 (State::Undef, '0' ..= '9') => state = State::Const,
-                (State::Undef, 'A' ..= 'z') => state = State::Name,
                 (State::Undef, x @ _) => {
-                    self.current += 1;
-                    match x {
-                        '+' => return Some(Op(Add)),
-                        '*' => return Some(Op(Mult)),
-                        '/' => return Some(Op(Div)),
-                        '-' => {
-                            if self.current < self.data.len()
-                                && self.data[self.current].is_digit(10) {
-                                state = State::Const;
-                                self.current -= 1;
-                            } else {
-                                return Some(Op(Sub))
-                            }
-                        },
-                        _ => return None,
+                    if x.is_alphabetic() {
+                        state = State::Name;
+                    } else if x == '-' {
+                        if self.current + 1 < self.data.len()
+                            && self.data[self.current + 1].is_digit(10) {
+                            state = State::Const;
+                        } else {
+                            self.current += 1;
+                            return Some(Op(Sub));
+                        }
+                    } else {
+                        return None;
                     }
                 }
                 (State::Name, '(') => {
@@ -96,13 +102,6 @@ impl Tokenizer {
     }
 }
 
-pub enum State {
-    Undef,
-    Name,
-    Const,
-
-}
-
 #[derive(Debug)]
 pub enum Token {
 
@@ -135,18 +134,18 @@ pub enum OpType {
     Div,
     Pow
 }
-
-#[cfg(test)]
-mod test {
-
-    use super::*;
-
-    #[test]
-    fn test_basics() {
-        let mut t = Tokenizer::init(String::from("n = sin(a + b) * c"));
-    }
-
-}
+//
+//#[cfg(test)]
+//mod test {
+//
+//    use super::*;
+//
+//    #[test]
+//    fn test_basics() {
+//        let mut t = Tokenizer::init(String::from("n = sin(a + b) * c"));
+//    }
+//
+//}
 
 
 
